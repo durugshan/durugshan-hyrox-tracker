@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HYROX Doubles Sim Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hyrox: {
+              yellow: '#FFDF00',
+              yellowHover: '#E5C800',
+              amber: '#FFB800',
+              dark: '#0B0B0C',
+              card: '#161719',
+              cardBorder: '#27292D',
+              muted: '#8E929B',
+              surface: '#1E2024'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Chakra Petch', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .neon-glow {
+      box-shadow: 0 0 25px -4px rgba(255, 223, 0, 0.4);
+    }
+    .neon-text-glow {
+      text-shadow: 0 0 12px rgba(255, 223, 0, 0.5);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #2b2e35;
+      border-radius: 4px;
+    }
+    @keyframes pulse-gentle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.92; transform: scale(0.995); }
+    }
+    .animate-pulse-gentle {
+      animation: pulse-gentle 2.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body class="bg-hyrox-dark text-slate-100 min-h-screen font-sans flex flex-col antialiased selection:bg-hyrox-yellow selection:text-black">
+
+  <header class="sticky top-0 z-40 bg-hyrox-dark/95 backdrop-blur-md border-b border-hyrox-cardBorder px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-hyrox-yellow flex items-center justify-center font-display font-bold text-black text-lg tracking-tighter">
+        HX
+      </div>
+      <div>
+        <h1 class="font-display font-bold tracking-tight text-lg text-white leading-none uppercase">
+          TORONTO <span class="text-hyrox-yellow">DOUBLES SIM</span>
+        </h1>
+        <p class="text-[10px] font-mono tracking-wider text-hyrox-muted mt-0.5">OPEN MEN • SOLO SHARE WORKLOAD</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="historyModalBtn" class="p-2 rounded-lg bg-hyrox-card border border-hyrox-cardBorder text-slate-300 hover:text-hyrox-yellow active:scale-95 transition-all text-xs flex items-center gap-1 font-semibold" title="Workout History">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="hidden sm:inline">History</span>
+      </button>
+      <button id="soundToggleBtn" class="p-2 rounded-lg bg-hyrox-card border border-hyrox-cardBorder text-hyrox-yellow hover:border-hyrox-yellow transition-all" title="Toggle Audio Chime">
+        <svg id="soundIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-2xl w-full mx-auto p-4 flex flex-col gap-4 pb-28 sm:pb-32">
+    
+    <!-- Simulation Preset Selector -->
+    <div id="simModeContainer" class="bg-hyrox-card border border-hyrox-cardBorder rounded-2xl p-2.5 flex items-center gap-2">
+      <button id="modeTaperBtn" class="flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all bg-hyrox-yellow text-black shadow-sm">
+        ⚡ Taper Sim (50% Volume)
+      </button>
+      <button id="modeFullBtn" class="flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all text-hyrox-muted hover:text-white">
+        🏆 Full Solo Share (100%)
+      </button>
+    </div>
+
+    <!-- Active Segment Banner & Cue Card -->
+    <div id="activeSegmentCard" class="relative overflow-hidden bg-gradient-to-b from-hyrox-card to-hyrox-surface border-2 border-hyrox-cardBorder rounded-3xl p-5 shadow-2xl transition-all">
+      <div class="absolute -right-12 -top-12 w-44 h-44 bg-hyrox-yellow/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Segment badge & progress indicator -->
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span id="segmentCategoryBadge" class="bg-hyrox-yellow text-black text-[11px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full">
+            RUN 1 OF 8
+          </span>
+          <span id="segmentIndexBadge" class="text-xs font-mono text-hyrox-muted font-bold">
+            Segment 1 / 16
+          </span>
+        </div>
+        <div id="targetSplitPill" class="text-xs font-mono text-hyrox-amber bg-black/40 border border-hyrox-cardBorder px-2.5 py-1 rounded-lg">
+          Target: <span id="targetSplitValue" class="font-bold text-white">4:30 - 5:00</span>
+        </div>
+      </div>
+
+      <!-- Station Name & Spec Details -->
+      <h2 id="activeSegmentTitle" class="text-2xl sm:text-3xl font-display font-extrabold tracking-tight text-white uppercase leading-tight mb-2">
+        1.0 KM RUN
+      </h2>
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-mono mb-4">
+        <div class="bg-black/35 rounded-xl p-2.5 border border-hyrox-cardBorder/60">
+          <span class="text-hyrox-muted block text-[10px] uppercase tracking-wider">Distance / Volume</span>
+          <span id="activeSegmentDistance" class="font-bold text-slate-100 text-sm">500 m</span>
+          <span id="activeSegmentLengths" class="text-hyrox-amber font-semibold text-[11px] block mt-0.5">Continuous pace</span>
+        </div>
+        <div class="bg-black/35 rounded-xl p-2.5 border border-hyrox-cardBorder/60">
+          <span class="text-hyrox-muted block text-[10px] uppercase tracking-wider">Weight / Setup</span>
+          <span id="activeSegmentSpec" class="font-bold text-slate-100 text-sm">Treadmill (1% Incline)</span>
+          <span id="activeSegmentNotes" class="text-hyrox-muted text-[11px] block truncate mt-0.5">Control HR early</span>
+        </div>
+      </div>
+
+      <!-- Primary Timer Readouts -->
+      <div class="bg-black/60 rounded-2xl p-4 border border-hyrox-cardBorder flex flex-col items-center justify-center">
+        <span class="text-[10px] font-mono tracking-widest text-hyrox-muted uppercase font-bold">CURRENT SEGMENT TIME</span>
+        <div id="lapTimerDisplay" class="font-mono text-4xl sm:text-5xl font-black text-hyrox-yellow neon-text-glow tracking-tight my-1">
+          00:00.0
+        </div>
+        <div class="flex items-center gap-2 font-mono text-xs text-slate-400">
+          <span>TOTAL:</span>
+          <span id="totalTimerDisplay" class="text-slate-100 font-bold">00:00:00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-hyrox-card border border-hyrox-cardBorder rounded-2xl p-4 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-display uppercase tracking-widest text-white font-bold flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-hyrox-yellow animate-ping"></span>
+          Segment Timeline
+        </h3>
+        <span id="completedCount" class="text-[11px] font-mono text-hyrox-muted">0/16 Completed</span>
+      </div>
+
+      <div id="splitsContainer" class="flex flex-col gap-1.5 max-h-56 overflow-y-auto custom-scroll pr-1">
+        <!-- Generated dynamically via JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-50 bg-hyrox-dark/95 backdrop-blur-xl border-t border-hyrox-cardBorder p-3 sm:p-4 shadow-2xl">
+    <div class="max-w-2xl mx-auto flex items-center gap-2.5">
+      <!-- Play / Pause / Start Button -->
+      <button id="togglePlayBtn" class="flex-none w-14 h-14 rounded-2xl bg-hyrox-surface border-2 border-hyrox-cardBorder flex items-center justify-center text-white active:scale-95 transition-all">
+        <svg id="playIcon" class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <!-- Primary Big Action Button (Next Split / Finish) -->
+      <button id="lapSplitBtn" class="flex-1 h-14 rounded-2xl bg-hyrox-yellow hover:bg-hyrox-yellowHover text-black font-display font-extrabold uppercase tracking-wider text-base sm:text-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all neon-glow shadow-lg disabled:opacity-40 disabled:pointer-events-none">
+        <span id="lapBtnText">START SIMULATION</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      <!-- Reset Workout Button -->
+      <button id="resetWorkoutBtn" class="flex-none w-14 h-14 rounded-2xl bg-hyrox-surface border-2 border-hyrox-cardBorder flex items-center justify-center text-hyrox-muted hover:text-red-400 active:scale-95 transition-all" title="Reset Simulation">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <div id="summaryModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-hyrox-card border-2 border-hyrox-yellow/80 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-hyrox-cardBorder">
+        <div>
+          <span class="text-hyrox-yellow font-mono text-xs font-bold uppercase tracking-wider">Simulation Completed</span>
+          <h2 class="text-2xl font-display font-extrabold text-white uppercase">Race Debrief</h2>
+        </div>
+        <button id="closeSummaryModal" class="text-hyrox-muted hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="my-4 space-y-3 overflow-y-auto custom-scroll pr-1">
+        <!-- Big Stat Totals -->
+        <div class="grid grid-cols-3 gap-2 text-center font-mono">
+          <div class="bg-hyrox-surface p-3 rounded-2xl border border-hyrox-cardBorder">
+            <div class="text-[10px] text-hyrox-muted uppercase">Total Time</div>
+            <div id="summaryTotalTime" class="text-lg font-bold text-hyrox-yellow font-display">00:00:00</div>
+          </div>
+          <div class="bg-hyrox-surface p-3 rounded-2xl border border-hyrox-cardBorder">
+            <div class="text-[10px] text-hyrox-muted uppercase">Run Time</div>
+            <div id="summaryRunTime" class="text-lg font-bold text-white font-display">00:00:00</div>
+          </div>
+          <div class="bg-hyrox-surface p-3 rounded-2xl border border-hyrox-cardBorder">
+            <div class="text-[10px] text-hyrox-muted uppercase">Station Time</div>
+            <div id="summaryStationTime" class="text-lg font-bold text-slate-300 font-display">00:00:00</div>
+          </div>
+        </div>
+
+        <div id="summaryFeedbackMsg" class="bg-black/50 border border-hyrox-cardBorder rounded-xl p-3 text-xs text-slate-300 font-sans">
+          Great job! Review your segment splits and export below for your race preparation records.
+        </div>
+
+        <!-- Table of Results -->
+        <div class="rounded-xl border border-hyrox-cardBorder overflow-hidden">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-hyrox-surface text-hyrox-muted text-[10px] uppercase border-b border-hyrox-cardBorder">
+              <tr>
+                <th class="p-2">Segment</th>
+                <th class="p-2">Actual</th>
+                <th class="p-2">Target</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody" class="divide-y divide-hyrox-cardBorder bg-black/30">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Action buttons: Copy, CSV, Close -->
+      <div class="pt-3 border-t border-hyrox-cardBorder flex flex-wrap gap-2">
+        <button id="copySummaryBtn" class="flex-1 py-2.5 px-3 bg-hyrox-yellow text-black font-display font-bold uppercase rounded-xl text-xs hover:bg-hyrox-yellowHover active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+          <span id="copyBtnLabel">Copy Summary</span>
+        </button>
+        <button id="exportCsvBtn" class="py-2.5 px-4 bg-hyrox-surface text-white border border-hyrox-cardBorder font-display font-bold uppercase rounded-xl text-xs hover:border-hyrox-yellow active:scale-95 transition-all">
+          Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-hyrox-card border border-hyrox-cardBorder rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-hyrox-cardBorder">
+        <h2 class="text-xl font-display font-extrabold text-white uppercase flex items-center gap-2">
+          <span>📜 Workout History</span>
+        </h2>
+        <button id="closeHistoryModal" class="text-hyrox-muted hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="historyListContainer" class="my-4 space-y-2.5 overflow-y-auto custom-scroll pr-1 flex-1">
+        <!-- Rendered via JS -->
+      </div>
+      <div class="pt-3 border-t border-hyrox-cardBorder flex justify-between items-center">
+        <button id="clearHistoryBtn" class="text-xs text-red-400 hover:text-red-300 font-mono">
+          Clear History
+        </button>
+        <button id="closeHistoryModalFooter" class="py-2 px-4 bg-hyrox-surface text-white rounded-xl text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Segment schedules for both Taper and Full Doubles Solo Share
+    const HYROX_PROGRAMS = {
+      taper: [
+        { id: 1, type: 'run', name: 'Run 1', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 145, targetRange: '2:15 - 2:35', notes: 'Settle in, smooth breathing' },
+        { id: 2, type: 'station', name: 'SkiErg', dist: '250 m', lengths: 'Damper 5–6', spec: 'Concept2 SkiErg', targetSec: 55, targetRange: '0:50 - 1:00', notes: 'Hips hinge, don’t blow arms' },
+        { id: 3, type: 'run', name: 'Run 2', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 150, targetRange: '2:20 - 2:40', notes: 'Regulate HR after Ski' },
+        { id: 4, type: 'station', name: 'Sled Push', dist: '25 m', lengths: '2 lengths of 12.5 m', spec: '152 kg (335 lbs) incl sled', targetSec: 45, targetRange: '0:35 - 0:55', notes: 'Low torso, steady drive' },
+        { id: 5, type: 'run', name: 'Run 3', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 155, targetRange: '2:25 - 2:45', notes: 'Shake out quads' },
+        { id: 6, type: 'station', name: 'Sled Pull', dist: '25 m', lengths: '2 lengths of 12.5 m', spec: '103 kg (227 lbs) incl sled', targetSec: 55, targetRange: '0:45 - 1:05', notes: 'Sit back, arm-over-arm cadence' },
+        { id: 7, type: 'run', name: 'Run 4', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 155, targetRange: '2:25 - 2:45', notes: 'Prepare for burpees' },
+        { id: 8, type: 'station', name: 'Burpee Broad Jumps', dist: '25 m', lengths: '2 lengths of 12.5 m (~18 jumps)', spec: 'Bodyweight', targetSec: 60, targetRange: '0:50 - 1:10', notes: 'Step up to save lower back' },
+        { id: 9, type: 'run', name: 'Run 5', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 155, targetRange: '2:25 - 2:45', notes: 'Start of 2nd half' },
+        { id: 10, type: 'station', name: 'Rowing', dist: '250 m', lengths: 'Damper 5–6', spec: 'Concept2 RowErg', targetSec: 55, targetRange: '0:50 - 1:00', notes: 'Powerful leg drive' },
+        { id: 11, type: 'run', name: 'Run 6', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 160, targetRange: '2:30 - 2:50', notes: 'Relax grip on this run!' },
+        { id: 12, type: 'station', name: 'Farmers Carry', dist: '100 m', lengths: '8 lengths of 12.5 m', spec: '2 × 24 kg Kettlebells', targetSec: 45, targetRange: '0:35 - 0:55', notes: 'Tall posture, quick feet' },
+        { id: 13, type: 'run', name: 'Run 7', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 165, targetRange: '2:35 - 2:55', notes: 'Heavy legs; stay upright' },
+        { id: 14, type: 'station', name: 'Sandbag Lunges', dist: '50 m', lengths: '4 lengths of 12.5 m', spec: '20 kg (44 lbs) bag', targetSec: 55, targetRange: '0:45 - 1:05', notes: 'Across upper traps; knee touch' },
+        { id: 15, type: 'run', name: 'Run 8', dist: '500 m', lengths: 'Continuous pace', spec: 'Treadmill (1% Incline)', targetSec: 155, targetRange: '2:25 - 2:45', notes: 'Final run push' },
+        { id: 16, type: 'station', name: 'Wall Balls', dist: '50 reps', lengths: '5 sets of 10 or 2x25', spec: '6 kg ball to 10-ft (3m) target', targetSec: 85, targetRange: '1:10 - 1:35', notes: 'Deep squat, smooth breathe' },
+      ],
+      full: [
+        { id: 1, type: 'run', name: 'Run 1', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 285, targetRange: '4:30 - 5:00', notes: 'Doubles joint race pace' },
+        { id: 2, type: 'station', name: 'SkiErg', dist: '500 m', lengths: 'Solo 50% split (Damper 5–6)', spec: 'Concept2 SkiErg', targetSec: 110, targetRange: '1:45 - 2:00', notes: 'Consistent 1:45 - 1:55 split' },
+        { id: 3, type: 'run', name: 'Run 2', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 300, targetRange: '4:45 - 5:15', notes: 'Maintain target running pace' },
+        { id: 4, type: 'station', name: 'Sled Push', dist: '25 m', lengths: '2 lengths of 12.5 m (50% share)', spec: '152 kg (335 lbs) incl sled', targetSec: 65, targetRange: '0:50 - 1:20', notes: 'Sprint drive each 12.5m lap' },
+        { id: 5, type: 'run', name: 'Run 3', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 310, targetRange: '4:50 - 5:30', notes: 'Flush the lactic acid from quads' },
+        { id: 6, type: 'station', name: 'Sled Pull', dist: '25 m', lengths: '2 lengths of 12.5 m (50% share)', spec: '103 kg (227 lbs) incl sled', targetSec: 90, targetRange: '1:15 - 1:50', notes: 'Lock hips, step into box' },
+        { id: 7, type: 'run', name: 'Run 4', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 310, targetRange: '4:50 - 5:30', notes: 'Relax shoulders and breathe' },
+        { id: 8, type: 'station', name: 'Burpee Broad Jumps', dist: '40 m', lengths: '~3.2 lengths of 12.5 m', spec: 'Bodyweight (~25-30 jumps)', targetSec: 110, targetRange: '1:30 - 2:00', notes: 'Smooth jump length, step forward' },
+        { id: 9, type: 'run', name: 'Run 5', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 310, targetRange: '4:50 - 5:30', notes: 'Past the halfway mark!' },
+        { id: 10, type: 'station', name: 'Rowing', dist: '500 m', lengths: 'Solo 50% split (Damper 5–6)', spec: 'Concept2 RowErg', targetSec: 110, targetRange: '1:45 - 2:00', notes: 'Long, fluid strokes' },
+        { id: 11, type: 'run', name: 'Run 6', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 315, targetRange: '4:55 - 5:35', notes: 'Protect grip! Shake hands loose' },
+        { id: 12, type: 'station', name: 'Farmers Carry', dist: '100 m', lengths: '8 lengths of 12.5 m (50% share)', spec: '2 × 24 kg Kettlebells', targetSec: 55, targetRange: '0:45 - 1:10', notes: 'Brace core, don’t drop bells' },
+        { id: 13, type: 'run', name: 'Run 7', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 325, targetRange: '5:00 - 5:45', notes: 'Mental toughness segment' },
+        { id: 14, type: 'station', name: 'Sandbag Lunges', dist: '50 m', lengths: '4 lengths of 12.5 m (50% share)', spec: '20 kg (44 lbs) bag', targetSec: 95, targetRange: '1:20 - 1:50', notes: 'Steady tempo, full extension' },
+        { id: 15, type: 'run', name: 'Run 8', dist: '1,000 m', lengths: 'Continuous running', spec: 'Treadmill (1% Incline)', targetSec: 310, targetRange: '4:50 - 5:30', notes: 'Last run—give what you have' },
+        { id: 16, type: 'station', name: 'Wall Balls', dist: '50 reps', lengths: '50% share (sets of 10 or 15)', spec: '6 kg ball to 10-ft (3m) target', targetSec: 115, targetRange: '1:40 - 2:15', notes: 'Finish strong at the arches!' },
+      ]
+    };
+
+    let currentMode = 'taper'; // 'taper' or 'full'
+    let currentSegmentIndex = 0; // 0 to 15
+    let isRunning = false;
+    let isFinished = false;
+    let soundEnabled = true;
+
+    // Timing state
+    let totalElapsedTime = 0; // ms
+    let currentLapElapsedTime = 0; // ms
+    let lastTickTime = 0;
+    let timerInterval = null;
+
+    // Completed splits record
+    let recordedSplits = []; // Array of { segmentIndex, name, type, durationMs, cumulativeMs, targetSec, targetRange }
+
+    let audioCtx = null;
+    function playBeep(freq = 880, duration = 0.12, type = 'sine') {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContext();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn('Audio not available', e);
+      }
+    }
+
+    function playTransitionChime() {
+      playBeep(659.25, 0.08); // E5
+      setTimeout(() => playBeep(880.00, 0.15), 90); // A5
+    }
+
+    function playCompletionFanfare() {
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+        setTimeout(() => playBeep(freq, 0.22, 'triangle'), idx * 120);
+      });
+    }
+
+    function triggerHaptic() {
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate([40, 60, 80]); } catch (e) {}
+      }
+    }
+
+    function formatLapTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSec / 60);
+      const seconds = totalSec % 60;
+      const tenths = Math.floor((ms % 1000) / 100);
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${tenths}`;
+    }
+
+    function formatTotalTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+      if (hours > 0) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    const lapTimerDisplay = document.getElementById('lapTimerDisplay');
+    const totalTimerDisplay = document.getElementById('totalTimerDisplay');
+    const togglePlayBtn = document.getElementById('togglePlayBtn');
+    const playIcon = document.getElementById('playIcon');
+    const lapSplitBtn = document.getElementById('lapSplitBtn');
+    const lapBtnText = document.getElementById('lapBtnText');
+    const resetWorkoutBtn = document.getElementById('resetWorkoutBtn');
+
+    const modeTaperBtn = document.getElementById('modeTaperBtn');
+    const modeFullBtn = document.getElementById('modeFullBtn');
+    const simModeContainer = document.getElementById('simModeContainer');
+
+    const activeSegmentCard = document.getElementById('activeSegmentCard');
+    const activeSegmentTitle = document.getElementById('activeSegmentTitle');
+    const segmentCategoryBadge = document.getElementById('segmentCategoryBadge');
+    const segmentIndexBadge = document.getElementById('segmentIndexBadge');
+    const targetSplitValue = document.getElementById('targetSplitValue');
+    const activeSegmentDistance = document.getElementById('activeSegmentDistance');
+    const activeSegmentLengths = document.getElementById('activeSegmentLengths');
+    const activeSegmentSpec = document.getElementById('activeSegmentSpec');
+    const activeSegmentNotes = document.getElementById('activeSegmentNotes');
+    const completedCount = document.getElementById('completedCount');
+    const splitsContainer = document.getElementById('splitsContainer');
+
+    // Modals
+    const summaryModal = document.getElementById('summaryModal');
+    const closeSummaryModal = document.getElementById('closeSummaryModal');
+    const copySummaryBtn = document.getElementById('copySummaryBtn');
+    const copyBtnLabel = document.getElementById('copyBtnLabel');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const summaryTotalTime = document.getElementById('summaryTotalTime');
+    const summaryRunTime = document.getElementById('summaryRunTime');
+    const summaryStationTime = document.getElementById('summaryStationTime');
+    const summaryTableBody = document.getElementById('summaryTableBody');
+
+    const historyModal = document.getElementById('historyModal');
+    const historyModalBtn = document.getElementById('historyModalBtn');
+    const closeHistoryModal = document.getElementById('closeHistoryModal');
+    const closeHistoryModalFooter = document.getElementById('closeHistoryModalFooter');
+    const historyListContainer = document.getElementById('historyListContainer');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+
+    function updateActiveSegmentView() {
+      const schedule = HYROX_PROGRAMS[currentMode];
+      if (currentSegmentIndex >= schedule.length) {
+        // Complete state
+        activeSegmentTitle.textContent = "WORKOUT COMPLETE";
+        segmentCategoryBadge.textContent = "FINISHED";
+        segmentCategoryBadge.className = "bg-green-500 text-black text-[11px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full";
+        segmentIndexBadge.textContent = "16 / 16 Done";
+        targetSplitValue.textContent = "Finished!";
+        activeSegmentDistance.textContent = "All Stations Done";
+        activeSegmentLengths.textContent = "Great race simulation";
+        activeSegmentSpec.textContent = "Ready for Toronto!";
+        activeSegmentNotes.textContent = "Tap debrief below";
+        lapBtnText.textContent = "VIEW FULL SUMMARY";
+        return;
+      }
+
+      const seg = schedule[currentSegmentIndex];
+      const isRun = seg.type === 'run';
+      const runNum = Math.floor(currentSegmentIndex / 2) + 1;
+      const stationNum = Math.floor(currentSegmentIndex / 2) + 1;
+
+      segmentCategoryBadge.textContent = isRun ? `RUN ${runNum} OF 8` : `STATION ${stationNum} OF 8`;
+      segmentCategoryBadge.className = isRun 
+        ? "bg-hyrox-yellow text-black text-[11px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full"
+        : "bg-hyrox-amber text-black text-[11px] font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full";
+
+      segmentIndexBadge.textContent = `Segment ${seg.id} / 16`;
+      activeSegmentTitle.textContent = seg.name;
+      targetSplitValue.textContent = seg.targetRange;
+      activeSegmentDistance.textContent = seg.dist;
+      activeSegmentLengths.textContent = seg.lengths;
+      activeSegmentSpec.textContent = seg.spec;
+      activeSegmentNotes.textContent = seg.notes;
+      completedCount.textContent = `${recordedSplits.length}/16 Completed`;
+
+      if (!isRunning && totalElapsedTime === 0) {
+        lapBtnText.textContent = "START SIMULATION";
+      } else {
+        const nextSeg = schedule[currentSegmentIndex + 1];
+        lapBtnText.textContent = nextSeg ? `NEXT: ${nextSeg.name.toUpperCase()}` : "FINISH SIMULATION";
+      }
+    }
+
+    function renderSplitsTimeline() {
+      const schedule = HYROX_PROGRAMS[currentMode];
+      splitsContainer.innerHTML = '';
+
+      schedule.forEach((seg, idx) => {
+        const recorded = recordedSplits.find(s => s.segmentIndex === idx);
+        const isCurrent = idx === currentSegmentIndex && !isFinished;
+        const isPending = idx > currentSegmentIndex;
+
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between p-2.5 rounded-xl border text-xs font-mono transition-all ${
+          isCurrent 
+            ? 'bg-hyrox-yellow/10 border-hyrox-yellow text-white shadow-sm' 
+            : recorded 
+              ? 'bg-black/40 border-hyrox-cardBorder text-slate-300' 
+              : 'bg-hyrox-surface/20 border-transparent text-hyrox-muted opacity-60'
+        }`;
+
+        let statusHtml = '';
+        if (recorded) {
+          const targetSec = seg.targetSec;
+          const actualSec = Math.floor(recorded.durationMs / 1000);
+          const diff = actualSec - targetSec;
+          const diffSign = diff > 0 ? `+${diff}s` : `${diff}s`;
+          const diffColor = diff <= 0 ? 'text-green-400' : (diff < 20 ? 'text-hyrox-amber' : 'text-red-400');
+          
+          statusHtml = `
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${formatLapTime(recorded.durationMs)}</span>
+              <span class="${diffColor} text-[10px]">(${diffSign})</span>
+            </div>
+          `;
+        } else if (isCurrent) {
+          statusHtml = `<span class="text-hyrox-yellow font-bold text-[11px] animate-pulse">ACTIVE NOW</span>`;
+        } else {
+          statusHtml = `<span class="text-hyrox-muted text-[11px]">${seg.targetRange}</span>`;
+        }
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-5 text-[11px] font-bold ${isCurrent ? 'text-hyrox-yellow' : 'text-hyrox-muted'}">${seg.id}.</span>
+            <span class="truncate font-semibold ${isCurrent ? 'text-hyrox-yellow font-bold' : 'text-slate-200'}">${seg.name}</span>
+            <span class="text-[10px] text-hyrox-muted hidden sm:inline">(${seg.dist})</span>
+          </div>
+          ${statusHtml}
+        `;
+        splitsContainer.appendChild(row);
+      });
+      // Scroll current into view smoothly
+      const activeEl = splitsContainer.children[currentSegmentIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function updateTimers() {
+      const now = performance.now();
+      const delta = now - lastTickTime;
+      lastTickTime = now;
+
+      if (isRunning) {
+        totalElapsedTime += delta;
+        currentLapElapsedTime += delta;
+        lapTimerDisplay.textContent = formatLapTime(currentLapElapsedTime);
+        totalTimerDisplay.textContent = formatTotalTime(totalElapsedTime);
+      }
+    }
+
+    function startTimer() {
+      if (isFinished) return;
+      isRunning = true;
+      lastTickTime = performance.now();
+      if (!timerInterval) {
+        timerInterval = setInterval(updateTimers, 50);
+      }
+      playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+      togglePlayBtn.classList.add('border-hyrox-yellow');
+      playBeep(520, 0.08);
+      // Lock mode change once workout commences
+      modeTaperBtn.disabled = true;
+      modeFullBtn.disabled = true;
+      simModeContainer.classList.add('opacity-70', 'pointer-events-none');
+      updateActiveSegmentView();
+    }
+
+    function pauseTimer() {
+      isRunning = false;
+      playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      togglePlayBtn.classList.remove('border-hyrox-yellow');
+      playBeep(380, 0.08);
+    }
+
+    function toggleTimer() {
+      if (isFinished) {
+        openSummaryModal();
+        return;
+      }
+      if (isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function recordSplit() {
+      if (!isRunning && totalElapsedTime === 0) {
+        startTimer();
+        return;
+      }
+
+      if (isFinished) {
+        openSummaryModal();
+        return;
+      }
+
+      const schedule = HYROX_PROGRAMS[currentMode];
+      const seg = schedule[currentSegmentIndex];
+
+      // Record this lap
+      recordedSplits.push({
+        segmentIndex: currentSegmentIndex,
+        id: seg.id,
+        name: seg.name,
+        type: seg.type,
+        distance: seg.dist,
+        lengths: seg.lengths,
+        durationMs: currentLapElapsedTime,
+        cumulativeMs: totalElapsedTime,
+        targetSec: seg.targetSec,
+        targetRange: seg.targetRange
+      });
+
+      triggerHaptic();
+      playTransitionChime();
+
+      // Reset segment timer
+      currentLapElapsedTime = 0;
+      lapTimerDisplay.textContent = "00:00.0";
+      currentSegmentIndex++;
+
+      // Check if finished
+      if (currentSegmentIndex >= schedule.length) {
+        finishWorkout();
+      } else {
+        updateActiveSegmentView();
+        renderSplitsTimeline();
+      }
+    }
+
+    function finishWorkout() {
+      pauseTimer();
+      isFinished = true;
+      playCompletionFanfare();
+      triggerHaptic();
+      updateActiveSegmentView();
+      renderSplitsTimeline();
+      saveWorkoutToLocalStorage();
+      setTimeout(openSummaryModal, 400);
+    }
+
+    function resetWorkout() {
+      if (totalElapsedTime > 1000 && !isFinished) {
+        // Safe confirm check without alert()
+        const shouldReset = window.confirm("Reset the current simulation and discard active timers?");
+        if (!shouldReset) return;
+      }
+
+      pauseTimer();
+      clearInterval(timerInterval);
+      timerInterval = null;
+
+      currentSegmentIndex = 0;
+      totalElapsedTime = 0;
+      currentLapElapsedTime = 0;
+      isFinished = false;
+      recordedSplits = [];
+
+      lapTimerDisplay.textContent = "00:00.0";
+      totalTimerDisplay.textContent = "00:00:00";
+      playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+
+      modeTaperBtn.disabled = false;
+      modeFullBtn.disabled = false;
+      simModeContainer.classList.remove('opacity-70', 'pointer-events-none');
+
+      updateActiveSegmentView();
+      renderSplitsTimeline();
+    }
+
+    function setMode(mode) {
+      if (isRunning || recordedSplits.length > 0) return;
+      currentMode = mode;
+      if (mode === 'taper') {
+        modeTaperBtn.className = "flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all bg-hyrox-yellow text-black shadow-sm";
+        modeFullBtn.className = "flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all text-hyrox-muted hover:text-white";
+      } else {
+        modeFullBtn.className = "flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all bg-hyrox-yellow text-black shadow-sm";
+        modeTaperBtn.className = "flex-1 py-2 px-3 rounded-xl font-display uppercase tracking-wider text-xs font-bold transition-all text-hyrox-muted hover:text-white";
+      }
+      updateActiveSegmentView();
+      renderSplitsTimeline();
+    }
+
+    function openSummaryModal() {
+      if (recordedSplits.length === 0) return;
+
+      let runMs = 0;
+      let stationMs = 0;
+
+      summaryTableBody.innerHTML = '';
+
+      recordedSplits.forEach(split => {
+        if (split.type === 'run') runMs += split.durationMs;
+        else stationMs += split.durationMs;
+
+        const actualFormatted = formatLapTime(split.durationMs);
+        const actualSec = Math.floor(split.durationMs / 1000);
+        const diff = actualSec - split.targetSec;
+        const diffColor = diff <= 0 ? 'text-green-400' : 'text-hyrox-amber';
+        const diffSign = diff > 0 ? `+${diff}s` : `${diff}s`;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="p-2 font-medium text-slate-200">
+            ${split.id}. ${split.name}
+            <span class="block text-[10px] text-hyrox-muted">${split.distance}</span>
+          </td>
+          <td class="p-2 font-bold text-white">
+            ${actualFormatted}
+            <span class="block text-[10px] ${diffColor}">${diffSign}</span>
+          </td>
+          <td class="p-2 text-hyrox-muted">${split.targetRange}</td>
+        `;
+        summaryTableBody.appendChild(row);
+      });
+
+      summaryTotalTime.textContent = formatTotalTime(totalElapsedTime);
+      summaryRunTime.textContent = formatTotalTime(runMs);
+      summaryStationTime.textContent = formatTotalTime(stationMs);
+
+      summaryModal.classList.remove('hidden');
+      summaryModal.classList.add('flex');
+    }
+
+    function closeSummary() {
+      summaryModal.classList.add('hidden');
+      summaryModal.classList.remove('flex');
+    }
+
+    function copySummaryText() {
+      let runMs = 0;
+      let stationMs = 0;
+      recordedSplits.forEach(s => s.type === 'run' ? runMs += s.durationMs : stationMs += s.durationMs);
+
+      const title = currentMode === 'taper' 
+        ? "HYROX Race-Week Taper Simulation (Men's Doubles Solo Share)"
+        : "HYROX Full Doubles Simulation (Solo Share)";
+      
+      let text = `⚡ ${title}\nDate: ${new Date().toLocaleDateString()} Toronto Prep\nTotal Time: ${formatTotalTime(totalElapsedTime)}\nRunning: ${formatTotalTime(runMs)} | Stations: ${formatTotalTime(stationMs)}\n\n--- SPLITS ---\n`;
+
+      recordedSplits.forEach(s => {
+        text += `${s.id}. ${s.name} (${s.distance}): ${formatLapTime(s.durationMs)} [Target: ${s.targetRange}]\n`;
+      });
+
+      text += `\nReady for race day!`;
+
+      // Copy using legacy execCommand for maximum iframe compatibility
+      const tempArea = document.createElement('textarea');
+      tempArea.value = text;
+      tempArea.style.position = 'fixed';
+      tempArea.style.opacity = '0';
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      try {
+        document.execCommand('copy');
+        copyBtnLabel.textContent = "Copied to Clipboard!";
+        setTimeout(() => { copyBtnLabel.textContent = "Copy Summary"; }, 2000);
+      } catch (err) {
+        copyBtnLabel.textContent = "Could not copy";
+      }
+      document.body.removeChild(tempArea);
+    }
+
+    function exportCsv() {
+      let csv = "Segment #,Name,Type,Distance,Setup / Lengths,Duration,Duration(sec),Cumulative\n";
+      recordedSplits.forEach(s => {
+        const durSec = (s.durationMs / 1000).toFixed(1);
+        const cleanLengths = `"${s.lengths.replace(/"/g, '""')}"`;
+        csv += `${s.id},"${s.name}",${s.type},"${s.distance}",${cleanLengths},${formatLapTime(s.durationMs)},${durSec},${formatTotalTime(s.cumulativeMs)}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.setAttribute('download', `hyrox_${currentMode}_sim_${Date.now()}.csv`);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+
+    const STORAGE_KEY = 'HYROX_DOUBLES_SIM_HISTORY_V1';
+
+    function saveWorkoutToLocalStorage() {
+      try {
+        const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        const workoutRecord = {
+          id: Date.now(),
+          date: new Date().toLocaleString(),
+          mode: currentMode,
+          totalMs: totalElapsedTime,
+          splits: recordedSplits
+        };
+        history.unshift(workoutRecord);
+        // Keep last 15 runs
+        if (history.length > 15) history.pop();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      } catch (e) {
+        console.warn('LocalStorage error', e);
+      }
+    }
+
+    function loadHistoryModal() {
+      try {
+        const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        historyListContainer.innerHTML = '';
+
+        if (history.length === 0) {
+          historyListContainer.innerHTML = `
+            <div class="text-center py-8 text-hyrox-muted text-xs">
+              No saved simulations yet. Complete a workout to log history.
+            </div>
+          `;
+          return;
+        }
+
+        history.forEach((run, index) => {
+          const item = document.createElement('div');
+          item.className = "bg-hyrox-surface p-3 rounded-2xl border border-hyrox-cardBorder flex items-center justify-between";
+          item.innerHTML = `
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-display font-bold text-white uppercase">${run.mode === 'taper' ? '⚡ Taper Sim' : '🏆 Full Sim'}</span>
+                <span class="text-[10px] font-mono text-hyrox-muted">${run.date}</span>
+              </div>
+              <div class="text-[11px] font-mono text-hyrox-amber mt-0.5">${run.splits.length} segments recorded</div>
+            </div>
+            <div class="text-right">
+              <span class="text-base font-mono font-black text-hyrox-yellow">${formatTotalTime(run.totalMs)}</span>
+            </div>
+          `;
+          historyListContainer.appendChild(item);
+        });
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function clearHistory() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        loadHistoryModal();
+      } catch (e) {}
+    }
+
+    togglePlayBtn.addEventListener('click', toggleTimer);
+    lapSplitBtn.addEventListener('click', recordSplit);
+    resetWorkoutBtn.addEventListener('click', resetWorkout);
+
+    modeTaperBtn.addEventListener('click', () => setMode('taper'));
+    modeFullBtn.addEventListener('click', () => setMode('full'));
+
+    closeSummaryModal.addEventListener('click', closeSummary);
+    copySummaryBtn.addEventListener('click', copySummaryText);
+    exportCsvBtn.addEventListener('click', exportCsv);
+
+    historyModalBtn.addEventListener('click', () => {
+      loadHistoryModal();
+      historyModal.classList.remove('hidden');
+      historyModal.classList.add('flex');
+    });
+
+    closeHistoryModal.addEventListener('click', () => {
+      historyModal.classList.add('hidden');
+      historyModal.classList.remove('flex');
+    });
+
+    closeHistoryModalFooter.addEventListener('click', () => {
+      historyModal.classList.add('hidden');
+      historyModal.classList.remove('flex');
+    });
+
+    clearHistoryBtn.addEventListener('click', clearHistory);
+
+    soundToggleBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundToggleBtn.classList.toggle('text-hyrox-yellow', soundEnabled);
+      soundToggleBtn.classList.toggle('text-hyrox-muted', !soundEnabled);
+      if (soundEnabled) playBeep(880, 0.1);
+    });
+
+    // Spacebar shortcut for desktop test ergonomics
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+        e.preventDefault();
+        recordSplit();
+      }
+    });
+
+    // Initial setup
+    updateActiveSegmentView();
+    renderSplitsTimeline();
+  </script>
+</body>
+</html>
